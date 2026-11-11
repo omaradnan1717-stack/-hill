@@ -32,3 +32,29 @@ management=async function(){await hillManagement();if(profile?.role!=='admin')re
  if(!users.length)section.append(document.createTextNode('أضف موظفاً من النموذج أدناه أولاً.'));
  }catch(e){section.append(document.createTextNode('يلزم تفعيل تحديث الصلاحيات بقاعدة البيانات مرة واحدة. '));const a=document.createElement('a');a.href='manager-permissions.sql';a.textContent='فتح نص التفعيل';a.target='_blank';section.append(a);}
 };
+
+// Keep the selected tab aligned with the page actually displayed.
+function hillSelectNavigation(label){
+ nav.querySelectorAll('button').forEach(button=>{
+  const selected=button.textContent.trim()===label;
+  button.classList.toggle('active',selected);
+  if(selected)button.setAttribute('aria-current','page');
+  else button.removeAttribute('aria-current');
+ });
+}
+const hillDailyWithSelection=sharedDaily;
+sharedDaily=async function(){
+ await hillDailyWithSelection.apply(this,arguments);
+ if(app.querySelector('h2')?.textContent.trim()==='الصرفيات اليومية')
+  hillSelectNavigation('الصرفيات اليومية');
+};
+const hillCashierWithSelection=cashierPage;
+cashierPage=async function(){
+ await hillCashierWithSelection.apply(this,arguments);
+ if(document.getElementById('cashierForm'))hillSelectNavigation('مطابقة الكاشير');
+};
+const hillManagementWithSelection=management;
+management=async function(){
+ await hillManagementWithSelection.apply(this,arguments);
+ if(profile?.role==='admin')hillSelectNavigation('الإعدادات — المواد والحسابات والسجل');
+};
