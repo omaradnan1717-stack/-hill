@@ -13,20 +13,21 @@ function cashierPage() {
   if (!isAdmin && profile?.role !== 'cashier' && !hillPermissions?.cashier) return;
   clearInterval(dailyPoll);
   const rows = isAdmin ? cashierGroups().sort((a,b)=>b.date.localeCompare(a.date)) : [];
-  app.innerHTML = `<section class="panel"><h2>مطابقة الكاشير</h2><p>الكلي − الماستر − دخول الكاشير = الصافي النقدي. الحفظ يرحّل الإيرادين معاً.</p><form id="cashierForm"><div><label>اسم الكاشير</label><input name="cashier" maxlength="100" required list="cashierNames"><datalist id="cashierNames">${[...new Set(rows.map(r=>r.cashier))].map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div><div><label>التاريخ</label><input name="date" type="date" value="${today()}" required></div><div><label>الشفت / رقم الوجبة</label><input name="shift" value="1" maxlength="50" required></div><div><label>المبيعات الكلية (د.ع)</label><input name="total" type="number" min="1" step="1" required></div><div><label>الماستر (د.ع)</label><input name="master" type="number" min="0" step="1" value="0" required></div><div><label>دخول الكاشير (د.ع)</label><input name="opening" type="number" min="0" step="1" value="0" required></div><div><label>الصافي النقدي</label><output id="cashierNet" style="display:block;padding:11px;font-weight:bold">—</output></div><button type="submit">حفظ وترحيل المطابقة</button></form><p id="cashierStatus" role="status"></p></section>${isAdmin ? `<section class="panel"><h2>المطابقات المستقلة</h2><div class="scroll"><table><thead><tr><th>التاريخ</th><th>الكاشير</th><th>الشفت</th><th>الكلي</th><th>دخول الكاشير</th><th>صافي النقدي</th><th>ماستر</th><th>إجراء</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${datefmt(r.date)}</td><td>${esc(r.cashier)}</td><td>${esc(r.shift)}</td><td>${fmt(r.total)}</td><td>${fmt(r.opening||0)}</td><td>${fmt(r.total-r.master-(r.opening||0))}</td><td>${fmt(r.master)}</td><td><button class="danger" onclick="deleteCashierMatch('${esc(r.id)}')">إلغاء المطابقة</button></td></tr>`).join('')||'<tr><td colspan="8">لا توجد مطابقات</td></tr>'}</tbody></table></div><p class="notice">كل كاشير مستقل. عند وجود أكثر من وجبة لنفس الكاشير في اليوم، استخدم رقم شفت مختلفاً. لا تسجّل هذه المبيعات مرة ثانية يدوياً بالإيرادات. الإلغاء يحذف إيرادي المطابقة معاً.</p></section>` : ''}`;
+  app.innerHTML = `<section class="panel"><h2>مطابقة الكاشير</h2><p>الكلي − الماستر − دخول الكاشير − فواتير العمال = الصافي النقدي. الحفظ يرحّل الإيرادين معاً.</p><form id="cashierForm"><div><label>اسم الكاشير</label><input name="cashier" maxlength="100" required list="cashierNames"><datalist id="cashierNames">${[...new Set(rows.map(r=>r.cashier))].map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div><div><label>التاريخ</label><input name="date" type="date" value="${today()}" required></div><div><label>الشفت / رقم الوجبة</label><input name="shift" value="1" maxlength="50" required></div><div><label>المبيعات الكلية (د.ع)</label><input name="total" type="number" min="1" step="1" required></div><div><label>الماستر (د.ع)</label><input name="master" type="number" min="0" step="1" value="0" required></div><div><label>فواتير العمال (د.ع)</label><input name="workerInvoices" type="number" min="0" step="1" value="0" required></div><div><label>دخول الكاشير (د.ع)</label><input name="opening" type="number" min="0" step="1" value="0" required></div><div><label>الصافي النقدي</label><output id="cashierNet" style="display:block;padding:11px;font-weight:bold">—</output></div><button type="submit">حفظ وترحيل المطابقة</button></form><p id="cashierStatus" role="status"></p></section>${isAdmin ? `<section class="panel"><h2>المطابقات المستقلة</h2><div class="scroll"><table><thead><tr><th>التاريخ</th><th>الكاشير</th><th>الشفت</th><th>الكلي</th><th>دخول الكاشير</th><th>فواتير العمال</th><th>صافي النقدي</th><th>ماستر</th><th>إجراء</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${datefmt(r.date)}</td><td>${esc(r.cashier)}</td><td>${esc(r.shift)}</td><td>${fmt(r.total)}</td><td>${fmt(r.opening||0)}</td><td>${fmt(r.workerInvoices||0)}</td><td>${fmt(r.total-r.master-(r.opening||0)-(r.workerInvoices||0))}</td><td>${fmt(r.master)}</td><td><button class="danger" onclick="deleteCashierMatch('${esc(r.id)}')">إلغاء المطابقة</button></td></tr>`).join('')||'<tr><td colspan="9">لا توجد مطابقات</td></tr>'}</tbody></table></div><p class="notice">كل كاشير مستقل. عند وجود أكثر من وجبة لنفس الكاشير في اليوم، استخدم رقم شفت مختلفاً. لا تسجّل هذه المبيعات مرة ثانية يدوياً بالإيرادات. الإلغاء يحذف إيرادي المطابقة معاً.</p></section>` : ''}`;
   const form=document.getElementById('cashierForm');
-  form.oninput=()=>{const t=Number(form.elements.total.value),m=Number(form.elements.master.value),o=Number(form.elements.opening.value);document.getElementById('cashierNet').textContent=Number.isSafeInteger(t)&&Number.isSafeInteger(m)&&Number.isSafeInteger(o)&&o>=0&&m>=0&&t-m>=o?fmt(t-m-o):'تحقق من المبالغ';};
+  form.oninput=()=>{const t=Number(form.elements.total.value),m=Number(form.elements.master.value),o=Number(form.elements.opening.value),w=Number(form.elements.workerInvoices.value);document.getElementById('cashierNet').textContent=Number.isSafeInteger(t)&&Number.isSafeInteger(m)&&Number.isSafeInteger(o)&&o>=0&&m>=0&&Number.isSafeInteger(w)&&w>=0&&t-m-o>=w?fmt(t-m-o-w):'تحقق من المبالغ';};
   mountMasterReceipts(form);
+  mountMasterReceipts(form,"workerInvoices","فواتير العمال");
   form.onsubmit=async ev=>{
     ev.preventDefault();
-    const f=new FormData(form),cashier=String(f.get('cashier')).trim().replace(/\s+/g,' '),shift=String(f.get('shift')).trim(),date=f.get('date'),total=Number(f.get('total')),master=Number(f.get('master')),opening=Number(f.get('opening'));
-    if(!cashier||!shift||!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isSafeInteger(total)||total<=0||!Number.isSafeInteger(master)||master<0||master>total||!Number.isSafeInteger(opening)||opening<0||opening>total-master)return alert('تحقق من الاسم والتاريخ والمبالغ؛ مجموع الماستر ودخول الكاشير لا يتجاوز الكلي');
-    if(total-opening===0)return alert('الصافي والماستر صفر؛ لا يوجد إيراد لترحيله');
+    const f=new FormData(form),cashier=String(f.get('cashier')).trim().replace(/\s+/g,' '),shift=String(f.get('shift')).trim(),date=f.get('date'),total=Number(f.get('total')),master=Number(f.get('master')),opening=Number(f.get('opening')),workerInvoices=Number(f.get('workerInvoices'));
+    if(!cashier||!shift||!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isSafeInteger(total)||total<=0||!Number.isSafeInteger(master)||master<0||master>total||!Number.isSafeInteger(opening)||opening<0||opening>total-master||!Number.isSafeInteger(workerInvoices)||workerInvoices<0||workerInvoices>total-master-opening)return alert('تحقق من الاسم والتاريخ والمبالغ؛ مجموع الماستر ودخول الكاشير وفواتير العمال لا يتجاوز الكلي');
+    if(total-opening-workerInvoices===0)return alert('الصافي والماستر صفر؛ لا يوجد إيراد لترحيله');
     const status=document.getElementById('cashierStatus');
     busy(true);
     try {
       if (!isAdmin) {
-        await api('/rest/v1/rpc/haail_cashier_submit',{cashier,shift,match_date:date,total,master,opening});
+        await api(workerInvoices ? '/rest/v1/rpc/haail_cashier_submit_invoices' : '/rest/v1/rpc/haail_cashier_submit', {cashier,shift,match_date:date,total,master,opening,...(workerInvoices?{worker_invoices:workerInvoices}:{})});
         form.reset();
         form.oninput();
         status.textContent='تم حفظ المطابقة وترحيل الإيراد ✅';
@@ -34,8 +35,8 @@ function cashierPage() {
       }
       await refreshAdmin();
       if(cashierGroups().some(r=>r.date===date&&r.cashier===cashier&&r.shift===shift))throw Error('هذه المطابقة مرحّلة سابقاً لنفس الكاشير والتاريخ والشفت');
-      const match={id:id(),cashier,shift,date,total,master,opening}, next=structuredClone(db),created=Date.now();
-      const newRows=[{amount:total-master-opening,method:'نقدي'},{amount:master,method:'ماستر كارد'}].filter(e=>e.amount>0).map(e=>({...e,id:id(),type:'income',created,date,category:'مبيعات الكاشير',note:'مطابقة '+cashier+' — شفت '+shift+' — دخول الكاشير '+opening,cashierMatchId:match.id}));
+      const match={id:id(),cashier,shift,date,total,master,opening,workerInvoices}, next=structuredClone(db),created=Date.now();
+      const newRows=[{amount:total-master-opening-workerInvoices,method:'نقدي'},{amount:master,method:'ماستر كارد'}].filter(e=>e.amount>0).map(e=>({...e,id:id(),type:'income',created,date,category:'مبيعات الكاشير',note:'مطابقة '+cashier+' — شفت '+shift+' — دخول الكاشير '+opening+' — فواتير العمال '+workerInvoices,cashierMatchId:match.id}));
       newRows[0].cashierMatch=match;
       next.entries.push(...newRows);
       const newRevision=await api('/rest/v1/rpc/haail_save',{body:next,expected:revision});
@@ -73,10 +74,10 @@ function parseMasterReceipt(value){
  if(!Number.isSafeInteger(amount)||amount<=0)throw Error('مبلغ الوصل يجب أن يكون أكبر من صفر');
  return amount;
 }
-function mountMasterReceipts(form){
- const master=form.elements.master;
+function mountMasterReceipts(form,field="master",title="وصولات الماستر"){
+ const master=form.elements[field];
  const box=document.createElement('div');box.style.gridColumn='1 / -1';
- box.innerHTML=`<details><summary>جمع وصولات الماستر</summary><p>أضف مبلغ كل وصل؛ المجموع ينتقل تلقائياً إلى خانة الماستر. الحفظ يتم بزر حفظ وترحيل المطابقة.</p><label>مبلغ الوصل<input data-receipt-amount type="text" inputmode="numeric" autocomplete="off" placeholder="مثال: 15,000" dir="ltr"></label><button type="button" data-add-receipt>إضافة الوصل</button><ol data-receipt-list></ol><p data-receipt-total></p><button type="button" class="light" data-clear-receipts>مسح قائمة الوصولات</button><p data-receipt-status role="status"></p></details>`;
+ box.innerHTML=`<details><summary>جمع ${title}</summary><p>أضف مبلغ كل وصل؛ المجموع ينتقل تلقائياً إلى خانة ${field === "master" ? "الماستر" : "فواتير العمال"}. الحفظ يتم بزر حفظ وترحيل المطابقة.</p><label>مبلغ الوصل<input data-receipt-amount type="text" inputmode="numeric" autocomplete="off" placeholder="مثال: 15,000" dir="ltr"></label><button type="button" data-add-receipt>إضافة الوصل</button><ol data-receipt-list></ol><p data-receipt-total></p><button type="button" class="light" data-clear-receipts>مسح قائمة الوصولات</button><p data-receipt-status role="status"></p></details>`;
  master.parentElement.insertAdjacentElement('afterend',box);
  const input=box.querySelector('[data-receipt-amount]'),list=box.querySelector('[data-receipt-list]'),summary=box.querySelector('[data-receipt-total]'),status=box.querySelector('[data-receipt-status]');
  let amounts=[];
@@ -96,7 +97,7 @@ function mountMasterReceipts(form){
   try{
    const amount=parseMasterReceipt(input.value),total=amounts.reduce((a,b)=>a+b,0)+amount;
    if(!Number.isSafeInteger(total))throw Error('مجموع الوصولات أكبر من الحد المسموح');
-   if(!amounts.length && Number(master.value)>0 && !confirm('استبدال مبلغ الماستر الحالي بمجموع قائمة الوصولات؟'))return;
+   if(!amounts.length && Number(master.value)>0 && !confirm('استبدال المبلغ الحالي بمجموع القائمة؟'))return;
    amounts.push(amount);input.value='';status.textContent='';draw(true);input.focus();
   }catch(e){status.textContent=e.message;}
  }
@@ -108,7 +109,7 @@ function mountMasterReceipts(form){
  input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!input.value)input.setCustomValidity('');});
  box.querySelector('[data-clear-receipts]').onclick=()=>{
   if(!amounts.length)return;
-  if(!confirm('مسح قائمة الوصولات وتصفير خانة الماستر؟'))return;
+  if(!confirm('مسح القائمة وتصفير المبلغ؟'))return;
   amounts=[];status.textContent='';draw(true);
  };
  form.addEventListener('reset',()=>{amounts=[];input.setCustomValidity('');status.textContent='';setTimeout(()=>draw(false),0);});
