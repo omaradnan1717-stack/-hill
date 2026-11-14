@@ -28,6 +28,7 @@ ledger = function(type) {
     '<section class="panel"><h2>ملخص الإيرادات المسجلة</h2>'+revenueSummary(db.entries)+'</section>'+ 
     groups.map(([title,method])=>`<section class="panel"><h2>إضافة ${title}</h2><form onsubmit="addEntry(event,'income')">${dateField.replace(/value="[^"]*"/,`value="${today()}"`)}${moneyField}<input type="hidden" name="method" value="${method}"><div><label>التصنيف</label><select name="category">${['مبيعات المطعم','مبيعات الكافيه','توصيل','إيراد آخر'].map(c=>`<option>${c}</option>`).join('')}</select></div>${noteField}<button>حفظ ${title}</button></form></section><section class="panel"><div class="topline"><h2>سجل ${title}</h2><b>${fmt(sum(all.filter(e=>e.method===method)))}</b></div>${entryTable(all.filter(e=>e.method===method),true)}</section>`).join('')+
     (other.length?'<section class="panel"><h2>إيرادات بطرق أخرى</h2>'+entryTable(other,true)+'</section>':'')+
+    '<div class="actions no-print"><button onclick="printLedger(\'income\')">عرض كشف الإيرادات / طباعة</button></div>'+
     '<p class="notice">المتبقي يُحسب بعد طرح المصروفات المسجّلة لنفس الفترة وبحسب طريقة الدفع. هذا المتبقي لا يشمل الرصيد السابق أو تحويل عهدة الصرف. الماستر يدخل بإجمالي الإيرادات، ولا يدخل برصيد الصندوق النقدي. إيرادات مطابقة الكاشير تظهر تلقائياً هنا؛ لا تسجّلها مرة ثانية.</p>';
 };
 const homeBeforeRevenueSplit=home;
@@ -47,3 +48,4 @@ printLedger=function(type){
     (revenueRows(rows).some(e=>!['نقدي','ماستر كارد'].includes(e.method))?'<h3>إيرادات بطرق أخرى</h3>'+entryTable(revenueRows(rows).filter(e=>!['نقدي','ماستر كارد'].includes(e.method)),false):''));
 };
 if(profile?.role==='admin')render();
+
