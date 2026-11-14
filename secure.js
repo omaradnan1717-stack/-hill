@@ -15,7 +15,7 @@ async function boot(){if(!cfg||!session)return gate();try{if(session.refresh_tok
   }
   throw Error('حسابك غير مخوّل؛ يضيفك المدير من إدارة المستخدمين');}materials=await api('/rest/v1/haail_materials?select=*&order=name');if(profile.role==='admin'){await refreshAdmin();render()}else await employee()}catch(x){session=null;sessionStorage.removeItem('haail_session');gate();alert(x.message)}}
 async function refreshAdmin(){const [s]=await api('/rest/v1/haail_state?id=eq.1&select=*');db=s.data;revision=s.revision;committed=structuredClone(db)}
-function logout(){session=null;profile=null;sessionStorage.removeItem('haail_session');closeStatement();gate()}
+function logout(){clearInterval(dailyPoll);session=null;profile=null;sessionStorage.removeItem('haail_session');closeStatement();gate()}
 const renderLocal=render;
 render=function(){if(profile?.role!=='admin')return;renderLocal();nav.insertAdjacentHTML('beforeend','<button onclick="management()">الإعدادات — المواد والحسابات والسجل</button><button onclick="reloadCloud()">تحديث</button><button onclick="logout()">خروج</button>')};
 async function reloadCloud(){busy(true);try{await refreshAdmin();render()}catch(x){alert(x.message)}finally{busy(false)}}
@@ -478,7 +478,9 @@ printDailyReport = function () {
 
   document.head.append(style);
   document.body.append(area);
-  window.print();
+  const cleanup=()=>{area.remove();style.remove();window.removeEventListener('afterprint',cleanup);};
+  window.addEventListener('afterprint',cleanup);
+  try{window.print();}catch(error){cleanup();throw error;}
 };
 // تعديل الرصيد الافتتاحي — للمدير فقط
 const totalsBeforeOpening = sharedTotals;
@@ -1394,3 +1396,11 @@ sharedDaily = async function() {
   });
 })();
 
+
+
+const hillOpenStatementBeforeFix=openStatement;
+openStatement=function(){
+ document.getElementById('haailPrintArea')?.remove();
+ document.getElementById('haailPrintStyle')?.remove();
+ return hillOpenStatementBeforeFix.apply(this,arguments);
+};
