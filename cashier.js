@@ -24,6 +24,8 @@ function cashierPage() {
     if(!cashier||!shift||!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isSafeInteger(total)||total<=0||!Number.isSafeInteger(master)||master<0||master>total||!Number.isSafeInteger(opening)||opening<0||opening>total-master||!Number.isSafeInteger(workerInvoices)||workerInvoices<0||workerInvoices>total-master-opening)return alert('تحقق من الاسم والتاريخ والمبالغ؛ مجموع الماستر ودخول الكاشير وفواتير العمال لا يتجاوز الكلي');
     if(total-opening-workerInvoices===0)return alert('الصافي والماستر صفر؛ لا يوجد إيراد لترحيله');
     const status=document.getElementById('cashierStatus');
+    if(form.dataset.sending==='yes')return;
+    form.dataset.sending='yes';
     busy(true);
     try {
       if (!isAdmin) {
@@ -34,7 +36,7 @@ function cashierPage() {
         return;
       }
       await refreshAdmin();
-      if(cashierGroups().some(r=>r.date===date&&r.cashier===cashier&&r.shift===shift))throw Error('هذه المطابقة مرحّلة سابقاً لنفس الكاشير والتاريخ والشفت');
+      if(cashierGroups().some(r=>r.date===date&&String(r.cashier).trim().replace(/\s+/g,' ').toLocaleLowerCase()===cashier.toLocaleLowerCase()&&String(r.shift).trim()===shift))throw Error('هذه المطابقة مرحّلة سابقاً لنفس الكاشير والتاريخ والشفت');
       const match={id:id(),cashier,shift,date,total,master,opening,workerInvoices}, next=structuredClone(db),created=Date.now();
       const newRows=[{amount:total-master-opening-workerInvoices,method:'نقدي'},{amount:master,method:'ماستر كارد'}].filter(e=>e.amount>0).map(e=>({...e,id:id(),type:'income',created,date,category:'مبيعات الكاشير',note:'مطابقة '+cashier+' — شفت '+shift+' — دخول الكاشير '+opening+' — فواتير العمال '+workerInvoices,cashierMatchId:match.id}));
       newRows[0].cashierMatch=match;
@@ -46,7 +48,7 @@ function cashierPage() {
       // Refresh after ambiguous responses: a committed match will block a retry.
       if(isAdmin){try{await refreshAdmin();}catch(_){}}
       status.textContent='لم يتم تأكيد الحفظ: '+error.message+' — عند إعادة المحاولة يتم فحص التكرار أولاً.';
-    } finally {busy(false);}
+    } finally {delete form.dataset.sending;busy(false);}
   };
 }
 async function deleteCashierMatch(matchId) {
@@ -98,7 +100,7 @@ function mountMasterReceipts(form,field="master",title="وصولات الماس�
    const amount=parseMasterReceipt(input.value),total=amounts.reduce((a,b)=>a+b,0)+amount;
    if(!Number.isSafeInteger(total))throw Error('مجموع الوصولات أكبر من الحد المسموح');
    if(!amounts.length && Number(master.value)>0 && !confirm('استبدال المبلغ الحالي بمجموع القائمة؟'))return;
-   amounts.push(amount);input.value='';status.textContent='';draw(true);input.focus();
+   amounts.push(amount);input.value='';input.setCustomValidity('');status.textContent='';draw(true);input.focus();
   }catch(e){status.textContent=e.message;}
  }
  box.querySelector('[data-add-receipt]').onclick=add;
@@ -110,8 +112,9 @@ function mountMasterReceipts(form,field="master",title="وصولات الماس�
  box.querySelector('[data-clear-receipts]').onclick=()=>{
   if(!amounts.length)return;
   if(!confirm('مسح القائمة وتصفير المبلغ؟'))return;
-  amounts=[];status.textContent='';draw(true);
+  amounts=[];input.value='';input.setCustomValidity('');status.textContent='';draw(true);
  };
- form.addEventListener('reset',()=>{amounts=[];input.setCustomValidity('');status.textContent='';setTimeout(()=>draw(false),0);});
+ form.addEventListener('reset',()=>{amounts=[];input.setCustomValidity('');status.textContent='';setTimeout(()=>{draw(false);form.dispatchEvent(new Event('input',{bubbles:true}));},0);});
  draw(false);
 }
+
